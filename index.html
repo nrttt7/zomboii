@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0d110e"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="ZOMBOII">
+<title>ซ่อมบ่อย (ZOMBOII)</title>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root{--bg:#0d110e;--card:#171d19;--line:#27322b;--neon:#39ff14;--tx:#e6f0e8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:#0d110e;color:var(--tx);font-family:system-ui,"Noto Sans Thai",sans-serif}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.neon{color:var(--neon);text-shadow:0 0 8px #39ff1488}
+.btn{background:#1f2b22;border:1px solid var(--neon);color:var(--neon);border-radius:10px;padding:.35rem .7rem;font-size:.85rem}
+.btn:active{background:var(--neon);color:#000}
+.btn.dim{border-color:var(--line);color:#9fb0a4}
+input,select{background:#0d110e;border:1px solid var(--line);border-radius:8px;padding:.4rem .6rem;color:var(--tx);min-width:0}
+.bar{height:14px;background:#0a0d0b;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:99px;transition:width .5s}
+@keyframes bl{50%{opacity:.25}}.blink{animation:bl .8s infinite}
+.tab{padding:.5rem 1rem;border-bottom:2px solid transparent;color:#9fb0a4}.tab.on{color:var(--neon);border-color:var(--neon)}
+body{font-family:'Mali','Noto Sans Thai',system-ui,sans-serif}
+:root{--neon:#8dff6a;--card:#18221b;--line:#2c3b30}
+.card{border-radius:20px;box-shadow:0 3px 0 #0a0f0b}
+.btn{border-radius:99px;border-width:2px}
+.bar{height:18px;border-width:2px}.bar>i{background-image:repeating-linear-gradient(45deg,#ffffff22 0 6px,transparent 6px 12px)}
+@keyframes bob{50%{transform:translateY(-4px) rotate(-3deg)}}.bob,.zzz{animation:bob 2s ease-in-out infinite}
+@keyframes wob{25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}.wob{animation:wob 1s infinite}
+#fx{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:#000a;pointer-events:none}
+#fx.hidden{display:none}
+.fxb{position:relative;width:200px;text-align:center}.fxb svg.z{width:200px;height:200px}
+.fxb.heal svg.z{animation:jump .6s 3}@keyframes jump{50%{transform:translateY(-40px) scale(1.1)}}
+.fxb.slash svg.z{animation:shake .5s .35s 2}@keyframes shake{25%{transform:translateX(-12px) rotate(-8deg)}75%{transform:translateX(12px) rotate(8deg)}}
+.sl{position:absolute;left:0;top:0;width:200px;height:200px}
+.sl path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .35s .1s forwards}@keyframes draw{to{stroke-dashoffset:0}}
+.mini svg{width:34px;height:34px}#logo svg{width:100%;height:auto}
+.zf{width:100%;height:auto;transform-origin:50% 95%}.fxb svg.zf{width:200px;height:280px}
+.arm{transform-box:fill-box;transform-origin:50% 0}
+@keyframes wave{from{transform:rotate(-40deg)}to{transform:rotate(40deg)}}
+@keyframes boogie{from{transform:translateY(0) rotate(-5deg)}to{transform:translateY(-12px) rotate(5deg)}}
+.dance{animation:boogie .5s ease-in-out infinite alternate}.dance .arm{animation:wave .5s ease-in-out infinite alternate}.dance .arm.r{animation-direction:alternate-reverse}
+#streak{cursor:pointer}
+</style></head>
+<body><div class="max-w-xl mx-auto p-3 pb-16">
+<header class="flex items-center justify-between py-2">
+  <div class="flex items-center gap-2"><div id="logo" class="bob w-12"></div><h1 class="text-xl font-bold neon">ซ่อมบ่อย <span class="text-sm">(ZOMBOII)</span></h1></div><div id="streak" data-tab="streak" class="card px-3 py-1 text-xs text-center"></div>
+</header>
+<nav class="flex overflow-x-auto border-b border-[#27322b] mb-3" id="tabs">
+  <button class="tab" data-tab="garage">🏚️ โรงรถ</button>
+  <button class="tab" data-tab="history">📜 ประวัติ</button>
+  <button class="tab" data-tab="streak">🔥 สตรีค</button>
+  <button class="tab" data-tab="settings">⚙️ ตั้งค่า</button>
+</nav>
+<main id="app"></main>
+</div>
+<div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50"></div>
+<div id="fx" class="hidden"></div>
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 bottom-4 card px-4 py-2 text-sm hidden z-50"></div>
+
+<script>
+/* ---------- Helpers ---------- */
+const $=s=>document.querySelector(s), DAY=864e5;
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const addDays=(d,n)=>new Date(new Date(d).getTime()+n*DAY).toISOString().slice(0,10);
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('th-TH');
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.remove('hidden');setTimeout(()=>e.classList.add('hidden'),2500)}
+
+/* ---------- Presets (เพิ่มรถ/Default Parts ใหม่ได้ที่นี่) ---------- */
+const PRESETS={
+ scoopy:{label:'🛵 Scoopy i',name:'Scoopy i',icon:'🛵',kmDay:80,parts:[['น้ำมันเครื่อง',3000],['น้ำมันเฟืองท้าย',6000],['ผ้าเบรก',10000],['สายพาน',20000],['เม็ดตุ้มน้ำหนัก',15000],['ยาง',15000],['ไส้กรองอากาศ',10000],['หัวเทียน',8000]]},
+ swift:{label:'🚗 Suzuki Swift',name:'Suzuki Swift',icon:'🚗',kmDay:20,parts:[['น้ำมันเครื่องสังเคราะห์',10000],['น้ำมันเกียร์',40000],['ผ้าเบรกหน้า/หลัง',40000],['ยางรถยนต์',50000],['กรองแอร์/กรองอากาศ',20000]]},
+ blank:{label:'➕ รถเปล่า',name:'รถคันใหม่',icon:'🚙',kmDay:30,parts:[]}
+};
+function makeVehicle(p){return{id:uid(),name:p.name,icon:p.icon,odo:0,odoDate:today(),sim:true,kmDay:p.kmDay,
+ parts:p.parts.map(([n,m])=>({id:uid(),name:n,max:m,lastOdo:0,lastDate:today()})),
+ dues:['พ.ร.บ.','ภาษี','ประกัน'].map(n=>({id:uid(),name:n,due:addDays(today(),365)}))}}
+
+/* ---------- Storage adapter (localStorage + Firebase stub) ---------- */
+const KEY='zomboii_v1';
+const Store={
+ load(){try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}},
+ save(s){s.updated=Date.now();try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}; Cloud.push(s)}
+};
+/* โครงสร้างสำหรับ Firebase: ใส่ config ในหน้าตั้งค่า แล้วเติมโค้ดจริงตามคอมเมนต์
+   (ต้องรันบนโฮสต์ของคุณเอง เพราะหน้าที่เผยแพร่ในแชทบล็อกการเชื่อมต่อภายนอก) */
+const Cloud={ready:null,
+ async init(){if(!S.fb)return null;if(!this.ready)this.ready=(async()=>{const L=u=>new Promise((r,j)=>{const e=document.createElement('script');e.src=u;e.onload=r;e.onerror=j;document.head.append(e)});
+  const b='https://www.gstatic.com/firebasejs/10.12.2/';await L(b+'firebase-app-compat.js');await L(b+'firebase-firestore-compat.js');
+  firebase.initializeApp(JSON.parse(S.fb));return firebase.firestore().doc('zomboii/'+(S.sync||'state'))})();return this.ready},
+ async push(s){try{const d=await this.init();if(d){const{hook,fb,...r}=s;await d.set(JSON.parse(JSON.stringify(r)))}}catch(e){}},
+ async pull(){try{const d=await this.init();if(d){const x=await d.get();return x.exists?x.data():null}}catch(e){toast('เชื่อม Firebase ไม่ได้')}}
+};
+
+let S=Store.load()||{vehicles:[makeVehicle(PRESETS.scoopy),makeVehicle(PRESETS.swift)],history:[],sel:null,tab:'garage',hook:'',fb:'',notified:{}};
+if(!S.sel||!S.vehicles.find(v=>v.id===S.sel))S.sel=S.vehicles[0]?.id;
+const save=()=>Store.save(S);
+const cur=()=>S.vehicles.find(v=>v.id===S.sel);
+
+/* ---------- Domain logic ---------- */
+function curOdo(v){ // ไมล์ปัจจุบัน = ไมล์ที่กรอกล่าสุด + ระยะจำลองรายวัน
+ const d=Math.max(0,Math.round((new Date(today())-new Date(v.odoDate))/DAY));
+ return v.odo+(v.sim?d*v.kmDay:0)}
+const hp=(v,p)=>Math.max(0,Math.min(100,100*(1-(curOdo(v)-p.lastOdo)/p.max)));
+const daysLeft=d=>Math.round((new Date(d)-new Date(today()))/DAY);
+
+/* ---------- Discord ---------- */
+async function send(msg){
+ if(!S.hook)return false;
+ try{const r=await fetch(S.hook,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content:(S.uid?`<@${S.uid}> `:'')+msg})});return r.ok}
+ catch(e){toast('ส่ง Discord ไม่สำเร็จ');return false}}
+const LV=[50,25,10,0],DV=[30,7,0],LM={50:'เลือดเหลือครึ่งหลอดแล้วนะ 🩸',25:'เลือดเหลือ 25% เริ่มแผ่วแล้ว! 😰',10:'เลือดเหลือแค่ 10% ใกล้สิ้นลมแล้ว 💀',0:'เลือดหมดหลอดแล้ว! โดนฟันเรียบร้อย ⚔️'};
+function checkAlerts(){
+ let ch=false,slash=null;
+ S.vehicles.forEach(v=>{
+  v.parts.forEach(p=>{const h=hp(v,p),k=v.id+p.id+p.lastOdo+'_',L=LV.filter(l=>h<=l).pop();
+   if(L===undefined||S.notified[k+L])return;
+   LV.filter(l=>l>=L).forEach(l=>S.notified[k+l]=1);ch=true;
+   send(`🧟‍♂️ [ZOMBOII] ลูกพี่! ${p.name}ของ ${v.name} ${LM[L]}`);
+   if(L===0)slash=`${p.name} ของ ${v.name}`});
+  v.dues.forEach(d=>{const n=daysLeft(d.due),k=v.id+d.id+d.due+'_',L=DV.filter(l=>n<=l).pop();
+   if(L===undefined||S.notified[k+L])return;
+   DV.filter(l=>l>=L).forEach(l=>S.notified[k+l]=1);ch=true;
+   send(`🧟‍♂️ [ZOMBOII] ลูกพี่! ${L===0?`ถึงเวลาต่อ${d.name}ของ ${v.name} แล้ว!`:`อีก ${n} วันต้องต่อ${d.name}ของ ${v.name} นะ`}`)})});
+ if(ch)save();
+ if(slash)fx('slash',slash+' โดนฟัน! 🗡️')}
+
+/* ---------- Zombie mascot ---------- */
+function zSVG(m='ok',c=''){
+ const E=a=>`<g stroke="#1d2a21" stroke-width="5" stroke-linecap="round" fill="none">${a}</g>`;
+ let eyes,mouth,extra='';
+ if(m==='sleep'){eyes=E('<path d="M60 112q14 10 28 0M112 112q14 10 28 0"/>');mouth='<ellipse cx="100" cy="146" rx="7" ry="5" fill="#5a2f35"/>';extra='<text x="150" y="58" font-size="26" font-weight="700" fill="#8dff6a">Z</text><text x="166" y="38" font-size="18" font-weight="700" fill="#8dff6a">z</text>'}
+ else if(m==='hit'){eyes=E('<path d="M64 104l20 20M84 104l-20 20M116 104l20 20M136 104l-20 20"/>');mouth=E('<path d="M82 148q9-9 18 0t18 0"/>')}
+ else{eyes='<ellipse cx="100" cy="126" rx="40" ry="7" fill="#2a3d2e" opacity=".35"/><circle cx="74" cy="112" r="15" fill="#fff" stroke="#1d2a21" stroke-width="4"/><circle cx="76" cy="114" r="8" fill="#1d2a21"/><circle cx="79" cy="111" r="3" fill="#fff"/><circle cx="127" cy="110" r="11" fill="#fff" stroke="#1d2a21" stroke-width="4"/><circle cx="128" cy="111" r="5" fill="#1d2a21"/>';
+  mouth='<path d="M80 138q20 26 40 0z" fill="#5a2f35" stroke="#1d2a21" stroke-width="4" stroke-linejoin="round"/><ellipse cx="100" cy="150" rx="8" ry="4" fill="#ff7b86"/><rect x="108" y="138" width="7" height="8" fill="#fff6dc"/>'}
+ return `<svg class="z ${c}" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<circle cx="36" cy="120" r="15" fill="#a3c993" stroke="#1d2a21" stroke-width="5"/><circle cx="164" cy="120" r="15" fill="#a3c993" stroke="#1d2a21" stroke-width="5"/>
+<path d="M38 112c0-38 28-62 62-62s62 24 62 62c0 36-26 56-62 56s-62-20-62-56z" fill="#a9cf9a" stroke="#1d2a21" stroke-width="5"/>
+<circle cx="52" cy="146" r="6" fill="#86ad77"/><circle cx="150" cy="150" r="5" fill="#86ad77"/>
+<path d="M40 94c-4-14 2-26 12-32l6 14zM160 94c4-14-2-26-12-32l-6 14z" fill="#2c3a31"/>
+${eyes}${mouth}
+<path d="M134 128l16 16M144 126l-8 10M148 138l-8 10" stroke="#3f6b3a" stroke-width="4" stroke-linecap="round"/>
+<g transform="rotate(${m==='sleep'?-8:0} 100 60)"><path d="M46 74c0-30 24-46 54-46s54 16 54 46z" fill="#ffc933" stroke="#1d2a21" stroke-width="5"/><rect x="92" y="26" width="16" height="46" fill="#ffb300" stroke="#1d2a21" stroke-width="4"/><circle cx="100" cy="52" r="8" fill="#fff8c4" stroke="#1d2a21" stroke-width="3"/><rect x="34" y="70" width="132" height="12" rx="6" fill="#ffb300" stroke="#1d2a21" stroke-width="5"/></g>${extra}</svg>`}
+function tomb(){return `<svg viewBox="0 0 200 200" class="w-40 mx-auto"><path d="M45 180V85a55 55 0 0 1 110 0v95z" fill="#8a948d" stroke="#1d2a21" stroke-width="5"/><text x="100" y="95" text-anchor="middle" font-size="22" font-weight="700" fill="#1d2a21">R.I.P.</text><path d="M70 115h60M76 130h48" stroke="#5c665f" stroke-width="4"/><path d="M28 182h144" stroke="#3b2f1f" stroke-width="8" stroke-linecap="round"/><g transform="translate(50 -2) scale(.5)"><path d="M46 74c0-30 24-46 54-46s54 16 54 46z" fill="#ffc933" stroke="#1d2a21" stroke-width="8"/></g><path d="M160 182v-24M160 160l-8-8M160 160l8-8" stroke="#a9cf9a" stroke-width="7" stroke-linecap="round"/></svg>`}
+function fx(k,t){const e=$('#fx');e.innerHTML=`<div class="fxb ${k}">${k==='dance'?zFull('ok','dance'):zSVG(k==='slash'?'hit':'ok')}${k==='slash'?'<svg class="sl" viewBox="0 0 200 200"><path d="M30 30L170 170" stroke="#ff3b3b" stroke-width="12" stroke-linecap="round" pathLength="1" fill="none"/></svg>':`<div class="text-4xl">${k==='dance'?'🎉💃🎉':'✨🩸✨'}</div>`}<div class="neon font-bold mt-2">${esc(t||'')}</div></div>`;e.classList.remove('hidden');clearTimeout(fx.t);fx.t=setTimeout(()=>e.classList.add('hidden'),2300)}
+
+function zFull(m,c=''){
+ const n=S.streak?S.streak.n:0,O='stroke="#1d2a21" stroke-width="4"';
+ const arm=(p,cl,x)=>`<g class="arm ${cl}"><path d="${p}" stroke="#1d2a21" stroke-width="17" stroke-linecap="round" fill="none"/><path d="${p}" stroke="#a9cf9a" stroke-width="10" stroke-linecap="round" fill="none"/>${x||''}</g>`;
+ const head=zSVG(m).replace('<svg class="z ','<svg x="40" y="0" width="120" height="120" class="z ');
+ return `<svg class="zf ${c}" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+<rect x="78" y="190" width="18" height="52" rx="8" fill="#2f5d8a" ${O}/><rect x="104" y="190" width="18" height="52" rx="8" fill="#2f5d8a" ${O}/>
+<ellipse cx="82" cy="248" rx="16" ry="8" fill="#5a3b24" ${O}/><ellipse cx="118" cy="248" rx="16" ry="8" fill="#5a3b24" ${O}/>
+${arm('M68 122q-26 18-22 50','l')}
+<path d="M64 108h72l6 88H58z" fill="#3b82c4" ${O} stroke-linejoin="round"/>
+<rect x="88" y="150" width="24" height="18" rx="4" fill="#2f6aa3" stroke="#1d2a21" stroke-width="3"/><path d="M68 172l12 6-8 10z" fill="#a9cf9a"/>
+${arm('M132 122q26 18 22 50','r','<g transform="translate(156 168) rotate(25)"><rect x="-3" y="-34" width="6" height="42" rx="3" fill="#c9d1cd" stroke="#1d2a21" stroke-width="2"/><circle cx="0" cy="-36" r="8" fill="#c9d1cd" stroke="#1d2a21" stroke-width="2"/></g>')}
+${head}
+${n>=14?'<rect x="72" y="58" width="24" height="16" rx="6" fill="#111"/><rect x="104" y="58" width="24" height="16" rx="6" fill="#111"/><path d="M96 66h8" stroke="#111" stroke-width="3"/>':''}
+${n>=30?'<path d="M80 18L78 4l10 7 12-11 12 11 10-7-2 14z" fill="#ffd700" stroke="#1d2a21" stroke-width="2"/>':''}
+</svg>`}
+function streakPage(){
+ const s=S.streak,n=s.n,days=new Set(s.days||[]);
+ const d0=new Date();d0.setDate(1);d0.setMonth(d0.getMonth()+(S.calM||0));
+ const y=d0.getFullYear(),m=d0.getMonth(),first=d0.getDay(),dim=new Date(y,m+1,0).getDate();
+ let cells='<div></div>'.repeat(first);
+ for(let d=1;d<=dim;d++){const iso=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`,on=days.has(iso);
+  cells+=`<div class="aspect-square rounded-xl flex items-center justify-center text-xs ${on?'bg-[#2c5a2a]':'bg-[#121a14] text-gray-500'} ${iso===today()?'ring-2 ring-[#8dff6a]':''}">${on?'<span class="mini">'+zSVG('ok')+'</span>':d}</div>`}
+ const ms=[[3,'🔧 ช่างฝึกหัด'],[7,'💃 ซอมบี้เต้น'],[14,'🕶️ แว่นดำ'],[30,'👑 มงกุฎ']];
+ return `<section class="card p-4 text-center">${n>=7?'<div class="text-2xl blink">🎉🎊🎉</div>':''}
+ <div class="w-44 mx-auto">${zFull('ok',n>=7?'dance':'bob')}</div>
+ <p class="font-bold neon mt-1">${n>=7?'ครบ 7 วันแล้ว! เต้นฉลองเลย 💃':'อีก '+(7-n%7)+' วันซอมบี้จะเต้นฉลอง'}</p>
+ <div class="flex justify-around mt-3 text-sm"><div><b class="neon text-2xl">${n}</b><br>วันต่อเนื่อง</div><div><b class="neon text-2xl">${s.best}</b><br>สูงสุด</div><div><b class="neon text-2xl">❄️${s.freeze||0}</b><br>ตั๋วพักสตรีค</div></div>
+ <p class="text-xs text-gray-400 mt-2">ครบทุก 7 วันได้ตั๋วพัก 1 ใบ (สูงสุด 2) ใช้กันสตรีคขาดเมื่อพลาด 1 วัน</p></section>
+ <section class="card p-3 mt-3"><div class="flex justify-between items-center mb-2"><button class="btn dim" data-act="cal" data-d="-1">◀</button><b>${d0.toLocaleDateString('th-TH',{month:'long',year:'numeric'})}</b><button class="btn dim" data-act="cal" data-d="1">▶</button></div>
+ <div class="grid grid-cols-7 gap-1 text-center text-xs text-gray-400 mb-1">${['อา','จ','อ','พ','พฤ','ศ','ส'].map(x=>'<div>'+x+'</div>').join('')}</div><div class="grid grid-cols-7 gap-1">${cells}</div></section>
+ <section class="card p-3 mt-3 grid grid-cols-2 gap-2 text-sm">${ms.map(([k,l])=>`<div class="rounded-xl p-2 ${n>=k?'bg-[#2c5a2a]':'bg-[#121a14] text-gray-500'}">${l}<br><span class="text-xs">${n>=k?'ปลดล็อกแล้ว':'ครบ '+k+' วัน'}</span></div>`).join('')}</section>`}
+
+/* ---------- Daily streak ---------- */
+let MS=false;
+function streakInit(){const t=today(),s=S.streak||(S.streak={last:'',n:0,best:0});s.days=s.days||[];s.freeze=s.freeze||0;
+ if(s.last===t)return null;
+ const gap=s.last?Math.round((new Date(t)-new Date(s.last))/DAY):0;let st=null;
+ if(!s.last||gap===1)s.n++;
+ else if(gap===2&&s.freeze>0){s.freeze--;s.days.push(addDays(t,-1));s.n++;st={freeze:1}}
+ else{st={gap,old:s.n};s.n=1}
+ if(s.n%7===0){MS=true;s.freeze=Math.min(2,s.freeze+1)}
+ s.days.push(t);s.days=s.days.slice(-400);s.last=t;s.best=Math.max(s.best,s.n);return st}
+const EPI=['ฝังสตรีคที่ตายเพราะขี้เกียจเปิดแอป','ตายเพราะรอเปลี่ยนน้ำมันเครื่องไม่ไหว','หลับไม่ตื่น ฝันถึงเลือดเต็มหลอด','เสียชีวิตด้วยอาการลืมเช็คไมล์'];
+function streakModal(st){if(st.freeze){fx('heal','❄️ ใช้ตั๋วพักสตรีค 1 ใบ สตรีคไม่ขาด!');return}
+ const dead=st.gap>=4;
+ modal(`<div class="text-center">${dead?tomb():zSVG('sleep','w-40 mx-auto zzz')}<p class="mt-2 font-bold">${dead?'ที่นี่'+EPI[Math.floor(Math.random()*EPI.length)]:'ซอมบี้หลับไป '+(st.gap-1)+' วัน... 😴'}</p><p class="text-sm text-gray-400">สตรีค ${st.old} วันรีเซ็ตแล้ว เริ่มนับใหม่วันนี้!</p><button class="btn mt-3" data-act="close">${dead?'⛏️ ขุดขึ้นมา':'🧟 ปลุกซอมบี้'}</button></div>`)}
+
+/* ---------- Render ---------- */
+function barColor(h){return h>50?'#39ff14':h>30?'#e6d814':h>15?'#ff9d00':'#ff2a2a'}
+function render(){
+ $('#logo').innerHTML=zSVG('ok');$('#streak').innerHTML=`🔥 <b class="neon text-base">${S.streak.n}</b> วัน${S.streak.freeze?' ❄️'+S.streak.freeze:''}<br>สูงสุด ${S.streak.best}`;
+ document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===S.tab));
+ $('#app').innerHTML=S.tab==='garage'?garage():S.tab==='history'?history():S.tab==='streak'?streakPage():settings();
+}
+function garage(){
+ const v=cur();
+ const tabs=`<div class="flex gap-2 overflow-x-auto pb-2 items-center">${S.vehicles.map(x=>`<button data-act="sel" data-id="${x.id}" class="btn ${x.id===S.sel?'':'dim'} whitespace-nowrap">${x.icon} ${esc(x.name)}</button>`).join('')}<button data-act="addv" class="btn dim whitespace-nowrap">+ เพิ่มรถ</button></div>`;
+ if(!v)return tabs+'<p class="text-center text-gray-400 mt-8">ยังไม่มีรถในโรงรถ กด “+ เพิ่มรถ”</p>';
+ const c=curOdo(v);
+ const odo=`<section class="card p-3 mt-2">
+  <div class="text-sm text-gray-400">เลขไมล์ปัจจุบัน (ประมาณ)</div>
+  <div class="text-3xl font-bold neon">${fmt(c)} <span class="text-base">กม.</span></div>
+  <div class="flex gap-2 mt-2"><input id="odoIn" type="number" inputmode="numeric" placeholder="ไมล์จริงหน้าปัด" class="flex-1"><button class="btn" data-act="odo">บันทึก/Calibrate</button></div>
+  <div class="flex gap-2 mt-2"><input id="addIn" type="number" inputmode="decimal" placeholder="วันนี้ขับไปกี่ กม." class="flex-1"><button class="btn" data-act="addodo">➕ บวกเพิ่ม</button></div>
+  <div class="flex items-center gap-3 mt-3 text-sm flex-wrap">
+   <label class="flex items-center gap-1"><input type="checkbox" data-act="sim" ${v.sim?'checked':''}> โหมดจำลองระยะทาง</label>
+   <label class="flex items-center gap-1">เฉลี่ย <input type="number" data-act="kmday" value="${v.kmDay}" class="w-20"> กม./วัน</label>
+  </div></section>`;
+ const parts=v.parts.map(p=>{const h=hp(v,p),left=Math.max(0,p.max-(c-p.lastOdo));
+  return `<div class="card p-3 mt-2"><div class="flex items-center justify-between gap-2">
+   <div class="font-semibold">${h<=0?'<span class="mini wob inline-block align-middle">'+zSVG('hit')+'</span> ':h<15?'<span class="blink">💀</span> ':''}${esc(p.name)}</div>
+   <div class="text-sm" style="color:${barColor(h)}">${Math.round(h)}%</div></div>
+   <div class="bar my-2"><i class="${h<=0?'blink':''}" style="width:${h}%;background:${barColor(h)}"></i></div>
+   <div class="flex items-center justify-between gap-2 text-xs text-gray-400 flex-wrap">
+    <span>เหลือ ${fmt(left)} กม.<br>เปลี่ยนล่าสุด <input type="date" value="${p.lastDate}" data-act="pdate" data-id="${p.id}" class="text-xs"> ไมล์ <input type="number" value="${Math.round(p.lastOdo)}" data-act="podo" data-id="${p.id}" class="w-20 text-xs"></span>
+    <span class="flex items-center gap-1">Max <input type="number" value="${p.max}" data-act="max" data-id="${p.id}" class="w-20 text-xs">
+     <button class="btn" data-act="heal" data-id="${p.id}">🩸 ฮีลเลือด</button>
+     <button class="btn dim" data-act="delp" data-id="${p.id}">🗑</button></span></div></div>`}).join('');
+ const add=`<div class="card p-3 mt-2 flex gap-2 flex-wrap"><input id="np" placeholder="ชื่ออะไหล่ใหม่" class="flex-1"><input id="nm" type="number" placeholder="Max กม." class="w-24"><button class="btn" data-act="addp">+ เพิ่ม</button></div>`;
+ const dues=`<h2 class="mt-4 mb-1 text-sm text-gray-400">📅 พ.ร.บ./ภาษี/ประกัน</h2>`+v.dues.map(d=>{const n=daysLeft(d.due);
+  const col=n<=0?'#ff2a2a':n<=30?'#ff9d00':'#39ff14';
+  return `<div class="card p-3 mt-2 flex items-center justify-between gap-2"><div><div class="font-semibold">${n<=30?'<span class="blink">💀</span> ':''}${esc(d.name)}</div><div class="text-xs text-gray-400">ครบกำหนด <input type="date" value="${d.due}" data-act="due" data-id="${d.id}" class="text-xs"></div></div>
+   <div class="text-right"><div class="text-xl font-bold" style="color:${col}">${n<=0?'หมดอายุ!':n+' วัน'}</div><button class="btn mt-1" data-act="renew" data-id="${d.id}">ต่ออายุ</button></div></div>`}).join('');
+ return tabs+odo+`<h2 class="mt-4 mb-1 text-sm text-gray-400">🔩 อะไหล่</h2>`+parts+add+dues+
+  `<div class="mt-6 text-center"><button class="btn dim" data-act="delv">ลบรถคันนี้</button></div>`;
+}
+function history(){
+ const v=cur(),rows=S.history.filter(h=>h.vid===S.sel).sort((a,b)=>b.ts-a.ts);
+ const total=rows.reduce((s,r)=>s+(r.cost||0),0);
+ return `<div class="mb-2">${S.vehicles.map(x=>`<button data-act="sel" data-id="${x.id}" class="btn ${x.id===S.sel?'':'dim'} mr-2">${x.icon} ${esc(x.name)}</button>`).join('')}</div>
+ <div class="card p-3 mb-2">รวมค่าซ่อม ${v?esc(v.name):''}: <b class="neon">${fmt(total)} บาท</b></div>`+
+ (rows.length?rows.map(r=>`<div class="card p-3 mt-2 flex justify-between"><div><div class="font-semibold">${esc(r.part)}</div><div class="text-xs text-gray-400">${r.date}${r.odo!=null?' · '+fmt(r.odo)+' กม.':''}</div></div><div class="neon">${fmt(r.cost||0)} ฿</div></div>`).join(''):'<p class="text-center text-gray-400 mt-8">ยังไม่มีประวัติการซ่อม</p>');
+}
+function settings(){
+ return `<section class="card p-3"><h2 class="font-semibold mb-2">🔔 Discord Webhook</h2>
+  <input id="hook" class="w-full" placeholder="DISCORD_WEBHOOK_URL" value="${esc(S.hook)}">
+  <input id="uid" class="w-full mt-2" placeholder="Discord User ID (ไม่บังคับ ไว้ @ปลุกคุณ)" value="${esc(S.uid||'')}">
+  <div class="mt-2 flex gap-2"><button class="btn" data-act="savehook">บันทึก</button><button class="btn dim" data-act="testhook">ทดสอบส่ง</button></div>
+  <p class="text-xs text-gray-400 mt-2">แจ้งเตือนเมื่อเลือด 0% หรือถึงวันต่อภาษี/พ.ร.บ./ประกัน (ส่งครั้งเดียวต่อรอบ)</p></section>
+  <section class="card p-3 mt-3"><h2 class="font-semibold mb-2">☁️ Firebase Config (JSON)</h2>
+  <textarea id="fb" rows="4" class="w-full bg-[#0d110e] border border-[#27322b] rounded p-2 text-xs" placeholder='{"apiKey":"...","databaseURL":"..."}'>${esc(S.fb)}</textarea>
+  <input id="sync" class="w-full mt-2" placeholder="รหัสซิงค์ (ตั้งเอง ยาว 16 ตัวอักษรขึ้นไป)" value="${esc(S.sync||'')}">
+  <button class="btn mt-2" data-act="savefb">บันทึก</button><button class="btn dim mt-2 ml-2" data-act="pull">⬇️ ดึงจากคลาวด์</button>
+  <p class="text-xs text-gray-400 mt-2">เติมโค้ดซิงค์ใน <code>Cloud.push/pull</code> ตามคอมเมนต์ในไฟล์</p></section>`;
+}
+
+/* ---------- Modal ---------- */
+function modal(html){const m=$('#modal');m.innerHTML=`<div class="card p-4 w-full max-w-sm">${html}</div>`;m.classList.remove('hidden')}
+const closeModal=()=>$('#modal').classList.add('hidden');
+function costModal(title,onOk,o){
+ modal(`<h3 class="font-semibold mb-2">${esc(title)}</h3><label class="text-sm">ราคาค่าซ่อม (บาท)</label><input id="cost" type="number" inputmode="decimal" class="w-full mt-1" placeholder="0">${o?`<label class="text-sm block mt-2">วันที่เปลี่ยน (ค่าเริ่มต้น = วันนี้)</label><input id="hd" type="date" value="${today()}" class="w-full mt-1"><label class="text-sm block mt-2">ไมล์ตอนเปลี่ยน (ค่าเริ่มต้น = ไมล์ปัจจุบัน)</label><input id="ho" type="number" value="${Math.round(o.odo)}" class="w-full mt-1">`:''}
+ <div class="flex gap-2 mt-3 justify-end"><button class="btn dim" data-act="close">ยกเลิก</button><button class="btn" id="okb">ยืนยัน</button></div>`);
+ $('#okb').onclick=()=>{onOk(+$('#cost').value||0,o?$('#hd').value||today():today(),o?(+$('#ho').value||o.odo):0);closeModal()}}
+
+/* ---------- Events ---------- */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-tab],[data-act]');if(!t)return;
+ if(t.dataset.tab){S.tab=t.dataset.tab;render();return}
+ const a=t.dataset.act,id=t.dataset.id,v=cur();
+ if(a==='close')return closeModal();
+ if(a==='cal'){S.calM=(S.calM||0)+ +t.dataset.d;render()}
+ if(a==='sel'){S.sel=id;save();render()}
+ if(a==='addv'){modal(`<h3 class="font-semibold mb-2">เพิ่มรถ</h3>${Object.entries(PRESETS).map(([k,p])=>`<button class="btn w-full mb-2" data-act="addpreset" data-id="${k}">${p.label}</button>`).join('')}<button class="btn dim w-full" data-act="close">ยกเลิก</button>`)}
+ if(a==='addpreset'){const n=makeVehicle(PRESETS[id]);S.vehicles.push(n);S.sel=n.id;closeModal();save();render()}
+ if(a==='delv'&&v){modal(`<p>ลบ ${esc(v.name)} และประวัติทั้งหมด?</p><div class="flex gap-2 mt-3 justify-end"><button class="btn dim" data-act="close">ยกเลิก</button><button class="btn" data-act="delvok">ลบ</button></div>`)}
+ if(a==='delvok'){S.vehicles=S.vehicles.filter(x=>x.id!==S.sel);S.history=S.history.filter(h=>h.vid!==S.sel);S.sel=S.vehicles[0]?.id;closeModal();save();render()}
+ if(a==='addodo'){const n=+$('#addIn').value;if(!(n>0))return toast('กรอกระยะที่ขับไปก่อน');v.odo=curOdo(v)+n;v.odoDate=today();save();render();toast('+'+fmt(n)+' กม.')}
+ if(a==='odo'){const n=+$('#odoIn').value;if(!(n>=0)||$('#odoIn').value==='')return toast('กรอกเลขไมล์ก่อน');v.odo=n;v.odoDate=today();save();render();toast('Calibrate แล้ว')}
+ if(a==='heal'){const p=v.parts.find(x=>x.id===id);costModal(`🩸 ฮีลเลือด: ${p.name}`,(cost,date,o)=>{S.history.push({vid:v.id,part:p.name,odo:o,date,cost,ts:Date.now()});p.lastOdo=o;p.lastDate=date;save();render();fx('heal','เลือดเต็มหลอด! +100%')},{odo:curOdo(v)})}
+ if(a==='renew'){const d=v.dues.find(x=>x.id===id);costModal(`ต่ออายุ: ${d.name}`,cost=>{
+   S.history.push({vid:v.id,part:'ต่อ'+d.name,odo:null,date:today(),cost,ts:Date.now()});d.due=addDays(today(),365);save();render()})}
+ if(a==='delp'){v.parts=v.parts.filter(x=>x.id!==id);save();render()}
+ if(a==='addp'){const n=$('#np').value.trim(),m=+$('#nm').value;if(!n||!(m>0))return toast('ใส่ชื่อและ Max กม.');v.parts.push({id:uid(),name:n,max:m,lastOdo:curOdo(v),lastDate:today()});save();render()}
+ if(a==='savehook'){S.hook=$('#hook').value.trim();S.uid=$('#uid').value.trim();save();toast('บันทึกแล้ว')}
+ if(a==='testhook'){send('🧟‍♂️ [ZOMBOII] ทดสอบระบบแจ้งเตือน ลูกพี่!').then(ok=>toast(ok?'ส่งแล้ว':'ส่งไม่สำเร็จ / ยังไม่ได้ใส่ URL'))}
+ if(a==='pull'){Cloud.pull().then(d=>{if(!d)return toast('ไม่พบข้อมูลบนคลาวด์');Object.assign(S,d,{hook:S.hook,fb:S.fb,sync:S.sync});S.sel=S.vehicles[0]?.id;save();render()})}
+ if(a==='savefb'){S.fb=$('#fb').value;S.sync=$('#sync').value.trim();if(S.fb&&S.sync.length<16)return toast('รหัสซิงค์ต้องยาว 16 ตัวอักษรขึ้นไป');save();toast('บันทึกแล้ว กำลังรีโหลด...');setTimeout(()=>location.reload(),900)}
+});
+document.addEventListener('change',e=>{
+ const t=e.target,a=t.dataset.act,v=cur();if(!a||!v)return;
+ if(a==='sim'){v.odo=curOdo(v);v.odoDate=today();v.sim=t.checked;save();render()}
+ if(a==='kmday'){v.odo=curOdo(v);v.odoDate=today();v.kmDay=Math.max(0,+t.value||0);save();render()}
+ if(a==='max'){const p=v.parts.find(x=>x.id===t.dataset.id);if(+t.value>0){p.max=+t.value;save();render()}}
+ if(a==='pdate'){v.parts.find(x=>x.id===t.dataset.id).lastDate=t.value;save();render()}
+ if(a==='podo'){v.parts.find(x=>x.id===t.dataset.id).lastOdo=+t.value||0;save();render()}
+ if(a==='due'){v.dues.find(x=>x.id===t.dataset.id).due=t.value;save();render()}
+});
+
+(async()=>{
+S.streak=S.streak||{last:'',n:0,best:0,days:[],freeze:0};render();
+try{if(S.fb){const d=await Promise.race([Cloud.pull(),new Promise(r=>setTimeout(r,4000))]);if(d&&d.updated>(S.updated||0))Object.assign(S,d,{hook:S.hook,fb:S.fb,sync:S.sync})}}catch(e){}
+if(!S.vehicles.find(v=>v.id===S.sel))S.sel=S.vehicles[0]?.id;
+const ST=streakInit();save();render();if(ST)streakModal(ST);if(MS)fx('dance','ครบ '+S.streak.n+' วัน! ซอมบี้เต้นฉลอง 💃');checkAlerts();setInterval(()=>{if(!document.activeElement||document.activeElement.tagName!=='INPUT'){render()}checkAlerts()},60000);
+})();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
